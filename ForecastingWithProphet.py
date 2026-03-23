@@ -54,8 +54,7 @@ if df_all is not None:
             with st.spinner(f'Analyzing data for {selected_device}...'):
                 
                 # filter (selected device and output filter)
-                df_energy = df_all[(df_all['Devicedescription'] == selected_device) & 
-                                   (df_all['Input_Output'] == 'Output')]
+                df_energy = df_all[(df_all['Devicedescription'] == selected_device)]
                 
                 df_energy = df_energy.rename(columns={'Date_Hour': 'ds', 'Amount': 'y'})
                 df_energy['ds'] = pd.to_datetime(df_energy['ds']).dt.tz_localize(None)
