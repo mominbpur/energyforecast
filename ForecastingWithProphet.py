@@ -1,15 +1,15 @@
 
-#import streamlit as st
-#import pandas as pd
-#from prophet import Prophet
-#import openmeteo_requests
-#import requests_cache
-#from retry_requests import retry
-#from datetime import datetime, timedelta
-#import io
-#from geopy.geocoders import Nominatim 
-#import matplotlib.pyplot as plt
-#import seaborn as sns
+import streamlit as st
+import pandas as pd
+from prophet import Prophet
+import openmeteo_requests
+import requests_cache
+from retry_requests import retry
+from datetime import datetime, timedelta
+import io
+from geopy.geocoders import Nominatim 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # graph style
 sns.set_theme(style="whitegrid")
