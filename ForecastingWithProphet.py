@@ -34,7 +34,7 @@ lat = st.sidebar.number_input("Latitude", value=45.2192, format="%.4f")
 lon = st.sidebar.number_input("Longitude", value=12.2796, format="%.4f")
 
 st.sidebar.markdown("---")
-st.sidebar.header(" Select Date Range")
+st.sidebar.header(" Select Date Range....")
 start_date = st.sidebar.date_input("Start Date", value=datetime(2023, 1, 1))
 end_date = st.sidebar.date_input("End Date (Past Data)", value=datetime.now() - timedelta(days=2))
 
