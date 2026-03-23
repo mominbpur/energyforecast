@@ -1,0 +1,11 @@
+streamlit
+pandas
+pyodbc
+prophet
+openmeteo-requests
+requests-cache
+retry-requests
+geopy
+matplotlib
+seaborn
+xlsxwriter
