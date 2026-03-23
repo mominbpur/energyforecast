@@ -1,6 +1,5 @@
 streamlit
 pandas
-pyodbc
 prophet
 openmeteo-requests
 requests-cache
@@ -9,3 +8,4 @@ geopy
 matplotlib
 seaborn
 xlsxwriter
+openpyxl
