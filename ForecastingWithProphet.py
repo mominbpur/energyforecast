@@ -67,7 +67,7 @@ if df_all is not None:
                     st.warning(f" {selected_device}- no data found for this fevice.")
                     st.stop()
 
-                # ৬. Weather API call
+                #  Weather API call
                 cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
                 retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
                 openmeteo = openmeteo_requests.Client(session=retry_session)
@@ -120,7 +120,7 @@ if df_all is not None:
                     fig2 = model.plot_components(forecast)
                     st.pyplot(fig2)
 
-                # report download link 
+                # report download  
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     #forecast[['ds', 'yhat', 'temp', 'rain', 'humidity']].to_excel(writer, index=False, sheet_name='Forecast_Results')
