@@ -122,31 +122,30 @@ if df_all is not None:
                     fig2 = model.plot_components(forecast)
                     st.pyplot(fig2)
 
+                
                 # report download  
                 output = io.BytesIO()
-                ## --------------------------------
-                # আসল ডেটা (y) এবং মডেলের প্রেডিকশন (yhat) একসাথে করা হচ্ছে
-                final_df = forecast[['ds', 'yhat']].merge(
+                
+                # ১. আসল ডেটা (y) এবং মডেলের প্রেডিকশন (yhat) একসাথে করা হচ্ছে
+                # এখানে 'df_energy' ব্যবহার করা হয়েছে কারণ এতে ফিল্টার করা আসল ডেটা আছে
+                comparison_df = forecast[['ds', 'yhat']].merge(
                     df_energy[['ds', 'y']], 
                     on='ds', 
                     how='left'
                 )
                 
-                # কলামের নাম সুন্দর করা
-                final_df = final_df.rename(columns={'y': 'Original_Data', 'yhat': 'Predicted_Forecast'})
+                # ২. কলামের নাম সুন্দর করা
+                comparison_df = comparison_df.rename(columns={'y': 'Original_Data', 'yhat': 'Predicted_Forecast'})
                 
-                # আবহাওয়ার আসল রিডিং যোগ করা
-                final_df = final_df.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
-                # --------------------------------
+                # ৩. আবহাওয়ার আসল রিডিং যোগ করা (temp, rain, humidity)
+                final_report = comparison_df.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+                
+                # ৪. এক্সেল ফাইলে সেভ করা
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    #forecast[['ds', 'yhat', 'temp', 'rain', 'humidity']].to_excel(writer, index=False, sheet_name='Forecast_Results')
-                    # actual weather temp, rain, humidity
-                    final_output = forecast[['ds', 'yhat']].merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
-                    # save to excel 
-                    final_output.to_excel(writer, index=False, sheet_name='Forecast_Results')
-                    
+                    final_report.to_excel(writer, index=False, sheet_name='Forecast_Results')
+                
                 st.download_button(
-                    label=" Download Excel Report",
+                    label="📥 Download Detailed Excel Report",
                     data=output.getvalue(),
                     file_name=f'Forecast_{selected_device}_{datetime.now().strftime("%Y%m%d")}.xlsx',
                     mime="application/vnd.ms-excel"
