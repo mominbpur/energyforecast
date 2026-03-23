@@ -123,8 +123,12 @@ if df_all is not None:
                 # report download link 
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    forecast[['ds', 'yhat', 'temp', 'rain', 'humidity']].to_excel(writer, index=False, sheet_name='Forecast_Results')
-                
+                    #forecast[['ds', 'yhat', 'temp', 'rain', 'humidity']].to_excel(writer, index=False, sheet_name='Forecast_Results')
+                    # actual weather temp, rain, humidity
+                    final_output = forecast[['ds', 'yhat']].merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+                    # save to excel 
+                    final_output.to_excel(writer, index=False, sheet_name='Forecast_Results')
+                    
                 st.download_button(
                     label=" Download Excel Report",
                     data=output.getvalue(),
