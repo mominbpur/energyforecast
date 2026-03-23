@@ -124,6 +124,20 @@ if df_all is not None:
 
                 # report download  
                 output = io.BytesIO()
+                ## --------------------------------
+                # আসল ডেটা (y) এবং মডেলের প্রেডিকশন (yhat) একসাথে করা হচ্ছে
+                final_df = forecast[['ds', 'yhat']].merge(
+                    df_energy_filtered[['ds', 'y']], 
+                    on='ds', 
+                    how='left'
+                )
+                
+                # কলামের নাম সুন্দর করা
+                final_df = final_df.rename(columns={'y': 'Original_Data', 'yhat': 'Predicted_Forecast'})
+                
+                # আবহাওয়ার আসল রিডিং যোগ করা
+                final_df = final_df.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+                # --------------------------------
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     #forecast[['ds', 'yhat', 'temp', 'rain', 'humidity']].to_excel(writer, index=False, sheet_name='Forecast_Results')
                     # actual weather temp, rain, humidity
