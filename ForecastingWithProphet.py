@@ -127,7 +127,7 @@ if df_all is not None:
                 ## --------------------------------
                 # আসল ডেটা (y) এবং মডেলের প্রেডিকশন (yhat) একসাথে করা হচ্ছে
                 final_df = forecast[['ds', 'yhat']].merge(
-                    df_energy_filtered[['ds', 'y']], 
+                    df_energy[['ds', 'y']], 
                     on='ds', 
                     how='left'
                 )
