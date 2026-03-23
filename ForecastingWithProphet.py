@@ -126,26 +126,26 @@ if df_all is not None:
                 # report download  
                 output = io.BytesIO()
                 
-                # ১. আসল ডেটা (y) এবং মডেলের প্রেডিকশন (yhat) একসাথে করা হচ্ছে
-                # এখানে 'df_energy' ব্যবহার করা হয়েছে কারণ এতে ফিল্টার করা আসল ডেটা আছে
+                # y and yhat
+                
                 comparison_df = forecast[['ds', 'yhat']].merge(
                     df_energy[['ds', 'y']], 
                     on='ds', 
                     how='left'
                 )
                 
-                # ২. কলামের নাম সুন্দর করা
+                # name change
                 comparison_df = comparison_df.rename(columns={'y': 'Original_Data', 'yhat': 'Predicted_Forecast'})
                 
-                # ৩. আবহাওয়ার আসল রিডিং যোগ করা (temp, rain, humidity)
+                #  (temp, rain, humidity)
                 final_report = comparison_df.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
                 
-                # ৪. এক্সেল ফাইলে সেভ করা
+                # save to excel
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     final_report.to_excel(writer, index=False, sheet_name='Forecast_Results')
                 
                 st.download_button(
-                    label="📥 Download Detailed Excel Report",
+                    label=" Download Detailed Excel Report",
                     data=output.getvalue(),
                     file_name=f'Forecast_{selected_device}_{datetime.now().strftime("%Y%m%d")}.xlsx',
                     mime="application/vnd.ms-excel"
