@@ -106,6 +106,8 @@ if df_all is not None:
                 future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
                 future[['temp', 'rain', 'humidity']] = future[['temp', 'rain', 'humidity']].ffill().bfill()
                 forecast = model.predict(future)
+
+                forecast['yhat'] = forecast['yhat'].clip(lower=0)
                 
                 st.success(f" {selected_device} Forecast is Ready!")
 
