@@ -16,7 +16,7 @@ from streamlit_searchbox import st_searchbox
 
 # Page Configuration
 st.set_page_config(page_title="AI Energy & Weather Dashboard", layout="wide")
-st.title("⚡ Advanced Energy AI & Weather Analytics (Excel Version)")
+st.title("⚡ Advanced Energy AI & Weather Analytics ")
 st.markdown("---")
 
 # Session State Initialization
