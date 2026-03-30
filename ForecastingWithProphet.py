@@ -51,7 +51,7 @@ if uploaded_file:
         st.sidebar.error(f"Error reading Excel: {e}")
         device_list = []
 else:
-    st.sidebar.info("Please upload an Excel file to start.")
+    st.sidebar.info("Please upload an Excel file to start. (str-DeviceDescription,Date_Hour,Amount)")
     device_list = []
 
 selected_devices = st.sidebar.multiselect("Select Device(s) :material/devices:", device_list)
