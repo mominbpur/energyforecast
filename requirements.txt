@@ -4,8 +4,8 @@ prophet
 openmeteo-requests
 requests-cache
 retry-requests
+plotly
 geopy
-matplotlib
-seaborn
+streamlit-searchbox
 xlsxwriter
-openpyxl
+matplotlib
