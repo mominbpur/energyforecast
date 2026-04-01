@@ -91,10 +91,17 @@ if st.button(f"🚀 Run Full Analysis"):
             openmeteo = openmeteo_requests.Client(session=retry_session)
             
             def parse_w(res):
+                start_dt = pd.to_datetime(res.Hourly().Time(), unit="s", utc=True)
+                end_dt = pd.to_datetime(res.Hourly().TimeEnd(), unit="s", utc=True)
+                
+                # এখানে freq="h" (ছোট হাতের) এবং ইঙ্ক্লুসিভ প্যারামিটারটি চেক করুন
                 return pd.DataFrame({
-                    "ds": pd.date_range(start=pd.to_datetime(res.Hourly().Time(), unit="s", utc=True), 
-                                      end=pd.to_datetime(res.Hourly().TimeEnd(), unit="s", utc=True), 
-                                      freq="h", inclusive=""),
+                    "ds": pd.date_range(
+                        start=start_dt, 
+                        end=end_dt, 
+                        freq="h", 
+                        inclusive="left"  # নিশ্চিত করুন বানান ঠিক আছে
+                    ),
                     "temp": res.Hourly().Variables(0).ValuesAsNumpy(),
                     "rain": res.Hourly().Variables(1).ValuesAsNumpy(),
                     "humidity": res.Hourly().Variables(2).ValuesAsNumpy()
