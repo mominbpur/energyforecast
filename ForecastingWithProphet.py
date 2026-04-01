@@ -94,7 +94,7 @@ if st.button(f"🚀 Run Full Analysis"):
                 return pd.DataFrame({
                     "ds": pd.date_range(start=pd.to_datetime(res.Hourly().Time(), unit="s", utc=True), 
                                       end=pd.to_datetime(res.Hourly().TimeEnd(), unit="s", utc=True), 
-                                      freq="H", inclusive="left"),
+                                      freq="h", inclusive=""),
                     "temp": res.Hourly().Variables(0).ValuesAsNumpy(),
                     "rain": res.Hourly().Variables(1).ValuesAsNumpy(),
                     "humidity": res.Hourly().Variables(2).ValuesAsNumpy()
@@ -166,14 +166,14 @@ if st.button(f"🚀 Run Full Analysis"):
             
             # Forecasting
             future = model.make_future_dataframe(periods=16*24, freq='h')
-            future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left').ffill().bfill()
+            future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='').ffill().bfill()
             forecast = model.predict(future)
             forecast['yhat'] = forecast['yhat'].clip(lower=0)
 
             st.plotly_chart(plot_plotly(model, forecast), use_container_width=True)
             
-            final_report = forecast[['ds', 'yhat']].merge(df_energy[['ds', 'y']], on='ds', how='left')
-            final_report = final_report.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+            final_report = forecast[['ds', 'yhat']].merge(df_energy[['ds', 'y']], on='ds', how='')
+            final_report = final_report.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='')
             final_report['Device_Name'] = device
             final_report['Process_Date'] = datetime.now()
             all_reports.append(final_report)
