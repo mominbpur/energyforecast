@@ -173,7 +173,8 @@ if st.button(f"🚀 Run Full Analysis"):
             
             # Forecasting
             future = model.make_future_dataframe(periods=16*24, freq='h')
-            future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='').ffill().bfill()
+            future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+            #future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='').ffill().bfill()
             forecast = model.predict(future)
             forecast['yhat'] = forecast['yhat'].clip(lower=0)
 
