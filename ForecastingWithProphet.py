@@ -135,9 +135,8 @@ if st.button(f"🚀 Run Full Analysis"):
                 st.warning(f"No data for {device}")
                 continue
             
-        # df_energy  all_weather ছে
+        
         df_train = pd.merge(df_energy, all_weather, on='ds', how='inner')
-        # 
         df_train[['temp', 'rain', 'humidity']] = df_train[['temp', 'rain', 'humidity']].ffill().bfill()
 
             # Prophet Training
