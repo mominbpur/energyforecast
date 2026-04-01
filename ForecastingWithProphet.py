@@ -136,8 +136,8 @@ if st.button(f"🚀 Run Full Analysis"):
                 continue
             
         
-        df_train = pd.merge(df_energy, all_weather, on='ds', how='inner')
-        df_train[['temp', 'rain', 'humidity']] = df_train[['temp', 'rain', 'humidity']].ffill().bfill()
+                df_train = pd.merge(df_energy, all_weather, on='ds', how='inner')
+                df_train[['temp', 'rain', 'humidity']] = df_train[['temp', 'rain', 'humidity']].ffill().bfill()
 
             # Prophet Training
             with st.spinner(f'AI is learning patterns for {device}...'):
