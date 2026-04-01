@@ -8,4 +8,5 @@ plotly
 geopy
 streamlit-searchbox
 xlsxwriter
+openpyxl
 matplotlib
