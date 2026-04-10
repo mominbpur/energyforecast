@@ -31,7 +31,7 @@ def check_login():
             submitted = st.form_submit_button("Enter Dashboard", use_container_width=True)
             
             if submitted:
-                if user == "admin" and pw == "admin123":
+                if user == "abdul" and pw == "123":
                     st.session_state['logged_in'] = True
                     st.rerun()
                 else:
