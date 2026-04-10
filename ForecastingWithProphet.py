@@ -1,151 +1,197 @@
 import streamlit as st
 import pandas as pd
 from prophet import Prophet
-from prophet.plot import plot_plotly
+from prophet.plot import plot_plotly, plot_components_plotly
 from prophet.diagnostics import cross_validation, performance_metrics
+from prophet.plot import plot_cross_validation_metric
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
 from datetime import datetime, timedelta
+import io
 import plotly.express as px
+from geopy.geocoders import Nominatim 
+import matplotlib.pyplot as plt
+from streamlit_searchbox import st_searchbox
 
-# --- ১. কনফিগারেশন এবং স্টাইলিং (Python 3.14 Safe Version) ---
-st.set_page_config(page_title="AI Energy Predictor Pro", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="AI Energy & Weather Dashboard", layout="wide")
+st.title("⚡ Advanced Energy AI & Weather Analytics ")
+st.markdown("---")
 
-def local_css():
-    # স্টাইলকে ছোট ছোট ব্লকে ভাগ করা হয়েছে যাতে রেন্ডারিং এরর না হয়
-    style = """
-    <style>
-    .stApp { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; }
-    .main-card { background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 15px; }
-    </style>
-    """
-    st.markdown(style, unsafe_allow_index=True)
+# Session State Initialization
+if 'final_data' not in st.session_state: st.session_state['final_data'] = None
+if 'raw_energy_data' not in st.session_state: st.session_state['raw_energy_data'] = None
 
-# --- ২. লগইন লজিক ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+# get lat,lon from location 
+def search_location(searchterm: str):
+    if not searchterm or len(searchterm) < 3:
+        return []
+    try:
+        geolocator = Nominatim(user_agent="energy_app")
+        locations = geolocator.geocode(searchterm, exactly_one=False, limit=5)
+        if locations:
+            return [(loc.address, (loc.latitude, loc.longitude)) for loc in locations]
+    except:
+        return []
+    return []
 
-def login_page():
-    local_css()
-    # Container ব্যবহার করা হয়েছে TypeError এড়ানোর জন্য
-    with st.container():
-        st.markdown("<h1 style='text-align: center;'>🔐 Energy AI Login</h1>", unsafe_allow_index=True)
-        user = st.text_input("Username", key="login_user")
-        pw = st.text_input("Password", type="password", key="login_pw")
-        
-        if st.button("Login", use_container_width=True):
-            if user == "admin" and pw == "admin123":
-                st.session_state['logged_in'] = True
-                st.rerun()
-            else:
-                st.error("Invalid Credentials!")
+# --- Sidebar Configuration ---
+st.sidebar.header("⚙️ Configuration")
 
-# --- ৩. মেইন কন্ট্রোল ফ্লো ---
-if not st.session_state['logged_in']:
-    login_page()
-    st.stop()
-
-# --- ৪. মেইন অ্যাপ (লগইন হওয়ার পর) ---
-local_css()
-with st.sidebar:
-    st.title("Settings")
-    if st.button("Logout"):
-        st.session_state['logged_in'] = False
-        st.rerun()
-    
-    st.header("📁 Data Source")
-    uploaded_file = st.file_uploader("Upload Excel/CSV", type=["xlsx", "csv"])
+# 1. Excel File Uploader (Replacing SQL)
+uploaded_file = st.sidebar.file_uploader("Upload Energy Data (Excel)", type=['xlsx'])
 
 if uploaded_file:
-    # ডেটা লোড
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df_raw = pd.read_csv(uploaded_file)
-        else:
-            df_raw = pd.read_excel(uploaded_file)
+        df_all = pd.read_excel(uploaded_file)
+        st.session_state['raw_energy_data'] = df_all
+        device_list = sorted(df_all['Devicedescription'].unique().tolist())
+    except Exception as e:
+        st.sidebar.error(f"Error reading Excel: {e}")
+        device_list = []
+else:
+    st.sidebar.info("Please upload an Excel file to start. (str-DeviceDescription,Date_Hour,Amount)")
+    device_list = []
 
-        # কলাম সিলেকশন
-        col1, col2, col3 = st.columns(3)
-        with col1: device_col = st.selectbox("Device Name Column", df_raw.columns)
-        with col2: date_col = st.selectbox("Date Column", df_raw.columns)
-        with col3: value_col = st.selectbox("Value Column", df_raw.columns)
+selected_devices = st.sidebar.multiselect("Select Device(s) :material/devices:", device_list)
 
-        df_raw[date_col] = pd.to_datetime(df_raw[date_col])
-        selected_devices = st.multiselect("Select Devices", df_raw[device_col].unique())
+st.sidebar.subheader(":material/location_on: Location Settings")
 
-        if st.button("🚀 Run Analysis"):
-            if not selected_devices:
-                st.warning("Please select a device.")
-            else:
-                # --- ৫. আবহাওয়া ডেটা ---
-                lat, lon = 45.4642, 9.1900 
-                cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
-                retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
-                openmeteo = openmeteo_requests.Client(session=retry_session)
-                
-                start_date_p = df_raw[date_col].min().strftime('%Y-%m-%d')
-                res_p = openmeteo.weather_api("https://archive-api.open-meteo.com/v1/archive", {
-                    "latitude": lat, "longitude": lon, 
-                    "start_date": start_date_p, 
-                    "end_date": datetime.now().strftime('%Y-%m-%d'),
-                    "hourly": ["temperature_2m", "rain", "relative_humidity_2m"]
-                })[0]
+# Location search bar 
+st.markdown("### Search Location (Auto-suggest) :material/search:")
+selected_location = st_searchbox(
+    search_location,
+    key="location_search",
+    placeholder="Search city or address...",
+    label=""
+)
 
-                # আবহাওয়া ডেটা পার্সিং
-                all_weather = pd.DataFrame({
-                    "ds": pd.date_range(start=pd.to_datetime(res_p.Hourly().Time(), unit="s", utc=True), 
-                                      end=pd.to_datetime(res_p.Hourly().TimeEnd(), unit="s", utc=True), 
+# default lat, lon
+lat, lon = 45.2192, 12.2796 
+
+if selected_location:
+    lat, lon = selected_location
+    st.sidebar.success(f"Selected: {lat}, {lon}")
+
+lat = st.sidebar.number_input("Latitude", value=lat, format="%.4f")
+lon = st.sidebar.number_input("Longitude", value=lon, format="%.4f")
+
+start_date = st.sidebar.date_input("Start Date", value=datetime(2025, 1, 1))
+end_date = st.sidebar.date_input("End Date", value=datetime.now().date() - timedelta(days=2))
+
+# --- Main Logic ---
+if st.button(f"🚀 Run Full Analysis"):
+    if not selected_devices or st.session_state['raw_energy_data'] is None:
+        st.warning("Please upload data and select at least one device!")
+        st.stop()
+
+    try:
+        # 1. Weather Data Fetching
+        with st.spinner('⌛ Fetching Weather Data...'):
+            cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+            retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+            openmeteo = openmeteo_requests.Client(session=retry_session)
+            
+            def parse_w(res):
+                return pd.DataFrame({
+                    "ds": pd.date_range(start=pd.to_datetime(res.Hourly().Time(), unit="s", utc=True), 
+                                      end=pd.to_datetime(res.Hourly().TimeEnd(), unit="s", utc=True), 
                                       freq="H", inclusive="left"),
-                    "temp": res_p.Hourly().Variables(0).ValuesAsNumpy(),
-                    "rain": res_p.Hourly().Variables(1).ValuesAsNumpy(),
-                    "humidity": res_p.Hourly().Variables(2).ValuesAsNumpy()
+                    "temp": res.Hourly().Variables(0).ValuesAsNumpy(),
+                    "rain": res.Hourly().Variables(1).ValuesAsNumpy(),
+                    "humidity": res.Hourly().Variables(2).ValuesAsNumpy()
                 })
-                all_weather['ds'] = all_weather['ds'].dt.tz_localize(None)
 
-                # --- ৬. মিসিং ডেটা ট্র্যাকার ---
-                missing_reports = []
-                for device in selected_devices:
-                    df_m = df_raw[df_raw[device_col] == device].copy()
-                    df_m['date_only'] = df_m[date_col].dt.date
-                    counts = df_m.groupby('date_only').size()
-                    for d, c in counts[counts < 24].items():
-                        missing_reports.append({"Device": device, "Date": d, "Missing Hours": 24-c})
-                
-                if missing_reports:
-                    with st.expander("🔍 Data Integrity Report"):
-                        st.table(pd.DataFrame(missing_reports))
+            p = {"latitude": lat, "longitude": lon, "hourly": ["temperature_2m", "rain", "relative_humidity_2m"]}
+            df_p = openmeteo.weather_api("https://archive-api.open-meteo.com/v1/archive", {**p, "start_date": start_date.strftime('%Y-%m-%d'), "end_date": datetime.now().strftime('%Y-%m-%d')})[0]
+            df_f = openmeteo.weather_api("https://api.open-meteo.com/v1/forecast", {**p, "forecast_days": 16})[0]
+            
+            all_weather = pd.concat([parse_w(df_p), parse_w(df_f)]).drop_duplicates('ds')
+            all_weather['ds'] = all_weather['ds'].dt.tz_localize(None)
 
-                # --- ৭. ট্রেনিং এবং ফোরকাস্টিং ---
-                for device in selected_devices:
-                    st.subheader(f"📊 Analysis for {device}")
-                    df_d = df_raw[df_raw[device_col] == device].rename(columns={date_col: 'ds', value_col: 'y'}).copy()
-                    df_d['ds'] = df_d['ds'].dt.tz_localize(None)
+        st.subheader("☁️ Global Weather Trend (Next 16 Days)")
+        st.plotly_chart(px.line(all_weather.tail(24*16), x='ds', y=['temp', 'rain', 'humidity']), use_container_width=True)
 
-                    # Interpolation
-                    full_range = pd.date_range(start=df_d['ds'].min(), end=df_d['ds'].max(), freq='H')
-                    df_d = pd.merge(pd.DataFrame({'ds': full_range}), df_d, on='ds', how='left')
-                    df_d['y'] = df_d['y'].interpolate(method='linear').clip(lower=0).ffill().bfill()
+        # 2. Device-wise Processing
+        all_reports = []
+        df_source = st.session_state['raw_energy_data']
 
-                    df_train = pd.merge(df_d, all_weather, on='ds', how='inner')
+        for device in selected_devices:
+            st.markdown(f"## 📊 Device: {device}")
+            
+            # Filter Data from uploaded Excel
+            df_energy = df_source[df_source['Devicedescription'] == device].copy()
+            df_energy = df_energy.rename(columns={'Date_Hour': 'ds', 'Amount': 'y'})
+            df_energy['ds'] = pd.to_datetime(df_energy['ds']).dt.tz_localize(None)
+            
+            # Date Range Filter
+            mask = (df_energy['ds'].dt.date >= start_date) & (df_energy['ds'].dt.date <= end_date)
+            df_energy = df_energy.loc[mask]
 
-                    model = Prophet()
-                    for reg in ['temp', 'rain', 'humidity']: model.add_regressor(reg)
-                    model.fit(df_train)
+            if df_energy.empty:
+                st.warning(f"No data found for {device} in selected date range.")
+                continue
+            
+            df_train = pd.merge(df_energy, all_weather, on='ds', how='inner')
 
-                    future = model.make_future_dataframe(periods=24*15, freq='H')
-                    future = pd.merge(future, all_weather, on='ds', how='left').ffill().bfill()
-                    
-                    forecast = model.predict(future)
-                    st.plotly_chart(plot_plotly(model, forecast), use_container_width=True)
+            # Training Prophet
+            with st.spinner(f'AI is learning patterns for {device}...'):
+                model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=True, 
+                               changepoint_prior_scale=0.05, interval_width=0.80, seasonality_mode='multiplicative')
+                model.add_country_holidays(country_name='IT')
+                for reg in ['temp', 'rain', 'humidity']: 
+                    model.add_regressor(reg)
+                model.fit(df_train)
 
-                    # Cross Validation
-                    df_cv = cross_validation(model, initial='100 days', period='30 days', horizon='15 days')
-                    df_m = performance_metrics(df_cv)
-                    acc = max(0, (1 - df_m['smape'].mean()) * 100)
-                    st.metric("Model Accuracy", f"{acc:.1f}%")
+            # Metrics
+            st.subheader(f"📈 Model Performance: {device}")
+            total_days = (df_train['ds'].max() - df_train['ds'].min()).days
+            if total_days > 30:
+                df_cv = cross_validation(model, initial=f'{int(total_days*0.7)} days', period='15 days', horizon='14 days')
+                df_metrics = performance_metrics(df_cv)
+                st.dataframe(df_metrics.head(), use_container_width=True)
+            
+            # Forecasting
+            future = model.make_future_dataframe(periods=16*24, freq='h')
+            future = pd.merge(future, all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left').ffill().bfill()
+            
+            forecast = model.predict(future)
+            forecast['yhat'] = forecast['yhat'].clip(lower=0)
+
+            st.plotly_chart(plot_plotly(model, forecast), use_container_width=True)
+            st.plotly_chart(plot_components_plotly(model, forecast), use_container_width=True)
+
+            # Merge and Report
+            final_report = forecast[['ds', 'yhat']].merge(df_energy[['ds', 'y']], on='ds', how='left')
+            final_report = final_report.merge(all_weather[['ds', 'temp', 'rain', 'humidity']], on='ds', how='left')
+            final_report['Device_Name'] = device
+            final_report['Process_Date'] = datetime.now()
+            all_reports.append(final_report)
+
+        if all_reports:
+            st.session_state['final_data'] = pd.concat(all_reports, ignore_index=True)
+            st.sidebar.success("✅ Forecast Ready!")
 
     except Exception as e:
-        st.error(f"Error processing file: {e}")
-else:
-    st.info("👋 Welcome! Please upload your Excel file from the sidebar.")
+        st.error(f"Error: {e}")
+
+# Export Options
+if st.session_state['final_data'] is not None:
+    st.divider()
+    st.subheader("📥 Download Analysis Results")
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        st.session_state['final_data'].to_excel(writer, index=False, sheet_name='Forecast_Report')
+    
+    st.download_button(
+        label="Download Full Excel Report :material/download:",
+        data=output.getvalue(),
+        file_name=f"Forecast_Output_{datetime.now().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.ms-excel",
+        type="primary"
+    )
+
+    if st.button("🔄 Clear and Start New"):
+        st.session_state['final_data'] = None
+        st.rerun()
