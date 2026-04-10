@@ -125,7 +125,7 @@ if uploaded_file:
 
                     # Interpolation & Prophet
                     status.write(f"🤖 Training AI for {device}...")
-                    full_range = pd.date_range(start=df_d['ds'].min(), end=df_d['ds'].max(), freq='H')
+                    full_range = pd.date_range(start=df_d['ds'].min(), end=df_d['ds'].max(), freq='h')
                     df_d = pd.merge(pd.DataFrame({'ds': full_range}), df_d, on='ds', how='left')
                     df_d['y'] = df_d['y'].interpolate().clip(lower=0).ffill().bfill()
 
