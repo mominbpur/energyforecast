@@ -56,7 +56,7 @@ def parse_weather(res):
     return pd.DataFrame({
         "ds": pd.date_range(start=pd.to_datetime(res.Hourly().Time(), unit="s", utc=True), 
                           end=pd.to_datetime(res.Hourly().TimeEnd(), unit="s", utc=True), 
-                          freq="H", inclusive="left"),
+                          freq="h", inclusive="left"),
         "temp": res.Hourly().Variables(0).ValuesAsNumpy(),
         "rain": res.Hourly().Variables(1).ValuesAsNumpy(),
         "humidity": res.Hourly().Variables(2).ValuesAsNumpy()
