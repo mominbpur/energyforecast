@@ -1,0 +1,86 @@
+import os
+from dotenv import load_dotenv
+import streamlit as st
+from google import genai
+from google.genai import types
+
+# env
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+
+st.set_page_config(page_title="Custom AI", page_icon="🤖")
+st.title("🤖 Custom AI")
+
+# api key check
+if not api_key:
+    st.error("❌ API Key not found! check .env file please")
+else:
+    try:
+        # client setup
+        client = genai.Client(api_key=api_key)
+
+        # chat history save
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # old history display
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # user input box
+        if prompt := st.chat_input("ask anything..."):
+            # show user input
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            # result from ai
+            with st.chat_message("assistant"):
+                try:
+                    # Build full chat history for Gemini
+                    # Gemini uses "user" and "model" roles (not "assistant")
+                    history = []
+                    for msg in st.session_state.messages:
+                        role = "model" if msg["role"] == "assistant" else "user"
+                        history.append(
+                            types.Content(
+                                role=role,
+                                parts=[types.Part(text=msg["content"])]
+                            )
+                        )
+
+                    # Send full history to Gemini
+                    response = client.models.generate_content(
+                        #model="gemini-2.0-flash"
+                        #model="gemini-1.5-flash",
+                        #model="gemini-2.0-flash-001",
+                        model="gemini-2.5-flash",
+                        #model="gemini-2.5-flash-preview-04-17",
+                        contents=history
+                    )
+
+                    answer = response.text
+                    st.markdown(answer)
+
+                    # result save
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+
+                except Exception as e:
+                    error_msg = str(e)
+                    if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                        st.warning("👋 too many requests today. please try again after some time.. thank you!")
+                    elif "503" in error_msg or "UNAVAILABLE" in error_msg:
+                        st.info("😴 server issue. please try again after some time.")
+                    elif "404" in error_msg:
+                        st.error("🔍 model not found. please check the model name.")
+                    else:
+                        st.error(f"⚠️ unknown error: {error_msg}")
+
+    except Exception as general_error:
+        st.error(f"system error: {general_error}")
+
+# clear button
+if st.sidebar.button("🗑️ delete chat history"):
+    st.session_state.messages = []
+    st.rerun()
